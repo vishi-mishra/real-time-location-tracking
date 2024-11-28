@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Real-Time Location Tracking</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.min.js"></script>
+  <style>
+    *{
+        padding: 0%;
+        margin: 0%;
+    }
+    #map { height: 400px; }
+  </style>
+</head>
+<body>
+  <h1 style="padding:30px; background-color: yellowgreen; text-align: center;">Real-Time location Tracking</h1>
+  <div id="map"></div>
+  <script>
+    const socket = io();
+    const map = L.map('map').setView([51.505, -0.09], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+    const markers = {};
+
+    socket.on('new-location', (data) => {
+      const deviceId = data.id;
+      const location = data.location;
+
+      if (!markers[deviceId]) {
+        markers[deviceId] = L.marker([location.latitude, location.longitude]).addTo(map);
+      } else {
+        markers[deviceId].setLatLng([location.latitude, location.longitude]);
+      }
+
+      map.setView([location.latitude, location.longitude], 13);
+    });
+
+    function updateLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((position) => {
+          const location = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude
+          };
+
+          socket.emit('device-location', location);
+        }, (error) => {
+          console.error('Geolocation error:', error);
+        });
+      } else {
+        console.log('Geolocation is not supported by this browser.');
+      }
+    }
+    setInterval(updateLocation, 5000);
+  </script>
+</body>
+</html>
